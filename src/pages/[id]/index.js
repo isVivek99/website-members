@@ -4,7 +4,6 @@ import { useRouter } from 'next/router';
 import {
   getMembersDataURL,
   getContributionsURL,
-  getActiveTasksURL,
   getCloudinaryImgURL,
 } from '@helper-functions/urls';
 import { fetch } from '@helper-functions/fetch';
@@ -12,36 +11,51 @@ import Profile from '@components/member-profile';
 import NotFound from '@components/not-found-page';
 import Layout from '@components/layout';
 import { CACHE_MAX_AGE } from '@constants/cache-max-age.js';
+
 import {
   WIDTH_200PX,
   WIDTH_40PX,
   HEIGHT_200PX,
   HEIGHT_40PX,
 } from '@constants/profile-image';
+
 import { useEffect, useState } from 'react';
+import { userContext } from '@store/user/user-context';
+import { UserTasksApi } from '@api/UserTasksApi';
+import Spinner from '@components/UI/spinner';
 
 const MemberProfile = ({ imageLink, user, contributions, errorMessage }) => {
+  const { isSuperUser, userApiCalled, setUserPrivileges, isLoading } =
+    userContext();
   const [activeTasksData, setActiveTasksData] = useState([]);
   const router = useRouter();
   const { id } = router.query;
+
   useEffect(() => {
-    (async () => {
-      const tasksURL = getActiveTasksURL(id);
-      const tasksResponse = await fetch(tasksURL);
-      const { tasks } = await tasksResponse.data;
-      setActiveTasksData(tasks);
-    })();
+    UserTasksApi.getAll(id).then((listTasks) => setActiveTasksData(listTasks));
   }, [id]);
+
+  if (isLoading) {
+    return <Spinner />;
+  }
 
   if (errorMessage) {
     return <NotFound errorMsg={errorMessage} />;
   }
 
+  if (!isSuperUser && !userApiCalled) {
+    setUserPrivileges();
+  }
+
   const { first_name = '', last_name = '' } = user;
+
+  if (!isSuperUser && !user.roles?.member) {
+    const errorMsg = `The Member Page for ${first_name} ${last_name} is not yet generated.`;
+    return <NotFound errorMsg={errorMsg} />;
+  }
   const memberName = `${first_name} ${last_name} | Member Real Dev Squad`;
 
-  const { query } = useRouter(); // this needs to be changed
-  const devUser = !!query.dev;
+  const devUser = !!router.query.dev;
 
   return (
     <Layout title={memberName}>

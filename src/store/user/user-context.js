@@ -1,30 +1,45 @@
 /* eslint-disable react-hooks/rules-of-hooks */
-import { createContext, useState, useContext } from 'react';
+import { createContext, useState, useContext, useCallback } from 'react';
+import { UserData } from '../../api/UserDataApi';
 
 const UserContext = createContext();
 
-export const UserContextProvider = ({ children }) => {
+export const UserContextProvider = ({ children, value }) => {
   const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSuperUser, setIsSuperUser] = useState(false);
-  const [isSuperUserMode, setIsSuperUserMode] = useState(false);
   const [showMemberRoleUpdateModal, setShowMemberRoleUpdateModal] =
     useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
+  const [userApiCalled, setUserApiCalled] = useState(false);
+
+  const setUserPrivileges = useCallback(async () => {
+    setIsLoading(true);
+    const userData = await UserData.get();
+    setUserApiCalled(true);
+    setUser(userData);
+    setIsSuperUser(Boolean(userData?.roles?.super_user));
+    setIsLoading(false);
+  }, [setUserApiCalled, setIsSuperUser, setUser]);
+
   const initialUserContext = {
     user,
     isSuperUser,
-    isSuperUserMode,
     selectedMember,
     showMemberRoleUpdateModal,
+    isLoading,
     setIsSuperUser,
     setUser,
-    setIsSuperUserMode,
     setSelectedMember,
     setShowMemberRoleUpdateModal,
+    userApiCalled,
+    setUserApiCalled,
+    setUserPrivileges,
+    setIsLoading,
   };
 
   return (
-    <UserContext.Provider value={initialUserContext}>
+    <UserContext.Provider value={value || initialUserContext}>
       {children}
     </UserContext.Provider>
   );
